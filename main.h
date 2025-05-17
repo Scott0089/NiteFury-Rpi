@@ -5,7 +5,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include "xgpio.h"
-
+#include "xtmrctr.h"
 
 #include <stdio.h>
 #include <stdlib.h>

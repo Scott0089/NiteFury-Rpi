@@ -33,6 +33,7 @@ include_directories(
     xlnx_libs/gpio
     xlnx_libs/standalone
     xlnx_libs/hw_config
+    xlnx_libs/tmrctr
     sc_libs
     xdma
 )
