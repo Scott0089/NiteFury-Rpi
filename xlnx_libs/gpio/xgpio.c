@@ -220,11 +220,12 @@ void XGpio_DiscreteWrite(XGpio * InstancePtr, unsigned Channel, u32 Mask)
 	Xil_AssertVoid(InstancePtr->IsReady == XIL_COMPONENT_IS_READY);
 	Xil_AssertVoid((Channel == 1) ||
 		     ((Channel == 2) && (InstancePtr->IsDual == TRUE)));
-printf("got here debug1\r\n");
-printf("%p\r\n", InstancePtr->BaseAddress);
-	XGpio_WriteReg((InstancePtr->BaseAddress),
+
+		 
+	XGpio_WriteReg(InstancePtr->BaseAddress,
 			((Channel - 1) * XGPIO_CHAN_OFFSET) + XGPIO_DATA_OFFSET,
 			Mask);
+
 
 }
 /** @} */

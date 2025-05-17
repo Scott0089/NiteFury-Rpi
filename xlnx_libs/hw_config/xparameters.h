@@ -21,7 +21,7 @@
 /******************************************************************/
 
 /* Definitions for driver GPIO */
-#define XPAR_XGPIO_NUM_INSTANCES 2
+#define XPAR_XGPIO_NUM_INSTANCES 4
 
 /* Definitions for peripheral GPIO_0 */
 #define XPAR_GPIO_0_BASEADDR 0x40000000
@@ -36,5 +36,17 @@
 #define XPAR_GPIO_1_DEVICE_ID 1
 #define XPAR_GPIO_1_INTERRUPT_PRESENT 0
 #define XPAR_GPIO_1_IS_DUAL 0
+
+#define XPAR_GPIO_2_BASEADDR 0x40020000
+#define XPAR_GPIO_2_HIGHADDR 0x40021FFF
+#define XPAR_GPIO_2_DEVICE_ID 1
+#define XPAR_GPIO_2_INTERRUPT_PRESENT 0
+#define XPAR_GPIO_2_IS_DUAL 0
+
+#define XPAR_GPIO_3_BASEADDR 0x40030000
+#define XPAR_GPIO_3_HIGHADDR 0x40031FFF
+#define XPAR_GPIO_3_DEVICE_ID 1
+#define XPAR_GPIO_3_INTERRUPT_PRESENT 0
+#define XPAR_GPIO_3_IS_DUAL 0
 
 #endif  /* end of protection macro */

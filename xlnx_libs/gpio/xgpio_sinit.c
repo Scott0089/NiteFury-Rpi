@@ -88,7 +88,6 @@ XGpio_Config *XGpio_LookupConfig(UINTPTR BaseAddress)
 	XGpio_Config *CfgPtr = NULL;
 
 	int Index;
-
 	for (Index = 0U; XGpio_ConfigTable[Index].Name != NULL; Index++) {
 		if ((XGpio_ConfigTable[Index].BaseAddress == BaseAddress) ||
 		    !BaseAddress) {
@@ -96,6 +95,7 @@ XGpio_Config *XGpio_LookupConfig(UINTPTR BaseAddress)
 			break;
 		}
 	}
+
 
 	return CfgPtr;
 }

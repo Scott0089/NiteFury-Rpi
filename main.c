@@ -1,8 +1,15 @@
 #include "main.h"
 
-XGpio gpioInst;
+#include "xparameters.h"
+
+#define ON 0x00
+#define OFF 0x01
 
 #define AXI_Translation 0x40000000
+
+XGpio gpioInst[4];
+
+uint64_t testarr[4] = {XPAR_GPIO_0_BASEADDR, XPAR_GPIO_1_BASEADDR, XPAR_GPIO_2_BASEADDR, XPAR_GPIO_3_BASEADDR};
 
 int fd = -1;
 
@@ -14,39 +21,38 @@ int main()
         perror("open\r\n");
         return -1;
     }
-printf("%x\r\n", XPAR_GPIO_1_BASEADDR);
-   
- int status;
-   // status = XGpio_Initialize(&gpioInst, XPAR_GPIO_1_BASEADDR);
-    status = XGpio_Initialize(&gpioInst, 0x40000000 - AXI_Translation);
-    if(status !=  XST_SUCCESS)
+
+    int status;
+    for (size_t i = 0; i < XPAR_XGPIO_NUM_INSTANCES; i++)
     {
-        printf("Failed to Init GPIO!\r\n");
-	printf("Status: %d\r\n", status);
-	return status;
+        status = XGpio_Initialize(&gpioInst[i], testarr[i]);
+        if (status != XST_SUCCESS) 
+        {
+            printf("GPIO %d failed to Init!\r\n", i);
+            return XST_FAILURE;
+        }
+
+        gpioInst[i].BaseAddress = gpioInst[i].BaseAddress - AXI_Translation;
     }
 
-//gpioInst.BaseAddress = 0x40010000;
+    for (size_t i = 0; i < XPAR_XGPIO_NUM_INSTANCES; i++)
+    {
+        XGpio_DiscreteWrite(&gpioInst[i], 0x01, OFF);
+    }
 
-    printf("%x\r\n", XPAR_GPIO_1_BASEADDR - AXI_Translation);
-    printf("%p\r\n", gpioInst.BaseAddress);
-
- uint64_t address = XPAR_GPIO_1_BASEADDR - AXI_Translation;
-/*
-printf("got here 1\r\n");
-    XGpio_DiscreteWrite(&gpioInst, 0x00, 0x00);
-printf("got here 2\r\n");
-    sleep(1);
-printf("got here 3\r\n");
-    XGpio_DiscreteWrite(&gpioInst, 0x00, 0x01);
-printf("got here 4\r\n");
-
-*/
-    XGpio_WriteReg(address, 0x00, 0x00);
-    sleep(1);
-    XGpio_WriteReg(address, 0x00, 0x01);
-
-
+    while (1)
+    {
+        for (size_t i = 0; i < XPAR_XGPIO_NUM_INSTANCES; i++)
+        {
+            XGpio_DiscreteWrite(&gpioInst[i], 0x01, ON);
+            sleep(1);
+        }
+        for (size_t i = 0; i < XPAR_XGPIO_NUM_INSTANCES; i++)
+        {
+            XGpio_DiscreteWrite(&gpioInst[3-i], 0x01, OFF);
+            sleep(1);
+        }
+    }
 
     printf("Everything done! \r\n Exiting... \r\n");
 
