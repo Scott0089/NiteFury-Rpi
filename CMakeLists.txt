@@ -12,14 +12,10 @@ endif()
 # Compiler flags
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -g -O2 -fPIC")
 
-
-
-
 # Add main executables source files
 set(MAIN_SRCS
     main.c
 )
-
 
 file(GLOB SC_LIBS_SRCS
     sc_libs/*.c
@@ -37,7 +33,6 @@ include_directories(
     sc_libs
     xdma
 )
-
 
 # add_library(xdma STATIC ${XDMA_SRCS})
 add_library(libsc_libs STATIC ${SC_LIBS_SRCS})

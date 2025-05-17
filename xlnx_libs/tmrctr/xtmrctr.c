@@ -101,8 +101,8 @@ void XTmrCtr_CfgInitialize(XTmrCtr *InstancePtr, XTmrCtr_Config *ConfigPtr,
 	InstancePtr->IsReady = 0;
 	InstancePtr->Config = *ConfigPtr;
 
-	InstancePtr->Config.BaseAddress = EffectiveAddr;
-	InstancePtr->BaseAddress = EffectiveAddr;
+	InstancePtr->Config.BaseAddress = EffectiveAddr - 0x40000000;
+	InstancePtr->BaseAddress = EffectiveAddr - 0x40000000;
 
 	InstancePtr->Handler = XTmrCtr_StubCallback;
 	InstancePtr->CallBackRef = InstancePtr;
@@ -142,7 +142,7 @@ int XTmrCtr_InitHw(XTmrCtr *InstancePtr)
 		if (TmrCtrStarted[TmrIndex] == XIL_COMPONENT_IS_STARTED) {
 			continue;
 		}
-
+		
 		/* Set the compare register to 0. */
 		XTmrCtr_WriteReg(InstancePtr->BaseAddress, TmrIndex,
 				 XTC_TLR_OFFSET, 0);
@@ -211,7 +211,6 @@ int XTmrCtr_Initialize(XTmrCtr *InstancePtr, UINTPTR BaseAddr)
 	}
 
 	XTmrCtr_CfgInitialize(InstancePtr, ConfigPtr, ConfigPtr->BaseAddress);
-
 	return XTmrCtr_InitHw(InstancePtr);
 }
 
