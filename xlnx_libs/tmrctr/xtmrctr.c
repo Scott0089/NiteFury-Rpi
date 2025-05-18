@@ -101,8 +101,8 @@ void XTmrCtr_CfgInitialize(XTmrCtr *InstancePtr, XTmrCtr_Config *ConfigPtr,
 	InstancePtr->IsReady = 0;
 	InstancePtr->Config = *ConfigPtr;
 
-	InstancePtr->Config.BaseAddress = EffectiveAddr - 0x40000000;
-	InstancePtr->BaseAddress = EffectiveAddr - 0x40000000;
+	InstancePtr->Config.BaseAddress = EffectiveAddr;
+	InstancePtr->BaseAddress = EffectiveAddr;
 
 	InstancePtr->Handler = XTmrCtr_StubCallback;
 	InstancePtr->CallBackRef = InstancePtr;

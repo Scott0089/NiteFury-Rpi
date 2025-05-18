@@ -154,6 +154,8 @@
 #ifndef XTMRCTR_H		/* prevent circular inclusions */
 #define XTMRCTR_H		/* by using protection macros */
 
+#define SDT
+
 #ifdef __cplusplus
 extern "C" {
 #endif

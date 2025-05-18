@@ -9,6 +9,4 @@
 uint32_t    SC_In32(uint64_t addr);
 void        SC_Out32(uint64_t addr, uint32_t val);
 
-
-
-#endif // _APT_IO_H_
+#endif 
