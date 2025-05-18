@@ -29,6 +29,13 @@ uint64_t testarr[4] = {XPAR_AXI_GPIO_0_BASEADDR, XPAR_AXI_GPIO_1_BASEADDR, XPAR_
 
 int fd = -1;
 
+void FP_Reset()
+{
+    XGpio_WriteReg(XPAR_XGPIO_5_BASEADDR, 0x01, 0x00);
+    sleep(2);
+    XGpio_WriteReg(XPAR_XGPIO_5_BASEADDR, 0x01, 0x00);
+}
+
 int SysMonFractionToInt(float FloatNum)
 {
     float Temp;

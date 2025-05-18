@@ -21,7 +21,7 @@
 /******************************************************************/
 
 /* Definitions for driver GPIO */
-#define XPAR_XGPIO_NUM_INSTANCES 5
+#define XPAR_XGPIO_NUM_INSTANCES 6
 
 /* Definitions for peripheral AXI_GPIO_0 */
 #define XPAR_AXI_GPIO_0_COMPATIBLE xlnx,axi-gpio-2.0
@@ -102,6 +102,22 @@
 #define XPAR_XGPIO_4_GPIO_WIDTH 0x20
 #define XPAR_XGPIO_4_INTERRUPT_PRESENT 0x0
 #define XPAR_XGPIO_4_IS_DUAL 0x0
+
+/* Definitions for peripheral AXI_GPIO_0 */
+#define XPAR_AXI_GPIO_5_COMPATIBLE xlnx,axi-gpio-2.0
+#define XPAR_AXI_GPIO_5_BASEADDR 0x40080000
+#define XPAR_AXI_GPIO_5_HIGHADDR 0x4008ffff
+#define XPAR_AXI_GPIO_5_INTERRUPT_PRESENT 0x0
+#define XPAR_AXI_GPIO_5_IS_DUAL 0x0
+#define XPAR_AXI_GPIO_5_GPIO_WIDTH 0x1
+
+/* Canonical definitions for peripheral AXI_GPIO_0 */
+#define XPAR_XGPIO_5_BASEADDR 0x40080000
+#define XPAR_XGPIO_5_HIGHADDR 0x4008ffff
+#define XPAR_XGPIO_5_COMPATIBLE xlnx,axi-gpio-2.0
+#define XPAR_XGPIO_5_GPIO_WIDTH 0x1
+#define XPAR_XGPIO_5_INTERRUPT_PRESENT 0x0
+#define XPAR_XGPIO_5_IS_DUAL 0x0
 
 #define XPAR_XTMRCTR_NUM_INSTANCES 1
 
