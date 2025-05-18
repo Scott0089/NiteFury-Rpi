@@ -31,6 +31,7 @@ include_directories(
     xlnx_libs/hw_config
     xlnx_libs/tmrctr
     xlnx_libs/sysmon
+    xlnx_libs/bram
     sc_libs
     xdma
 )

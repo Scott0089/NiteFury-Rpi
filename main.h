@@ -9,6 +9,7 @@
 #include "xgpio.h"
 #include "xtmrctr.h"
 #include "xsysmon.h"
+#include "xbram.h"
 
 #include "sc_io.h"
 
