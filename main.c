@@ -19,6 +19,21 @@ XSysMon sysmonInst;
 
 int fd = -1;
 
+typedef struct 
+{
+    u32 TempRawData;
+    u32 VCCINTRawData;
+    u32 VCCAUXRawData;
+    u32 VCCBRAMRawData;
+    float   TempData;
+    float   VCCINTData;
+    float   VCCAUXData;
+    float   VCCBRAMData;
+} XADC_Data;
+
+XADC_Data xadcInst;
+
+
 int SysMonFractionToInt(float FloatNum)
 {
     float Temp;
@@ -112,11 +127,19 @@ int main()
         return XST_FAILURE;
     }
 
-    u32 TempRawData = 0xFF;
-    float TempData = 0xFF;
-
     while(1)
     {
+
+        xadcInst.TempRawData = XSysMon_GetAdcData(&sysmonInst, XSM_CH_TEMP);
+        xadcInst.VCCINTRawData = XSysMon_GetAdcData(&sysmonInst, XSM_CH_VCCINT);
+        xadcInst.VCCAUXRawData = XSysMon_GetAdcData(&sysmonInst, XSM_CH_VCCAUX);
+        xadcInst.VCCBRAMRawData = XSysMon_GetAdcData(&sysmonInst, XSM_CH_VBRAM);
+
+        xadcInst.TempData = XSysMon_RawToTemperature(xadcInst.TempRawData);
+        xadcInst.VCCINTData = XSysMon_RawToVoltage(xadcInst.VCCINTRawData);
+        xadcInst.VCCAUXData = XSysMon_RawToVoltage(xadcInst.VCCAUXRawData);
+        xadcInst.VCCBRAMData = XSysMon_RawToVoltage(xadcInst.VCCBRAMRawData);
+        
         if(XTmrCtr_IsExpired(&tmrInst, 1))
         {
             XTmrCtr_Reset(&tmrInst, 1);
@@ -124,10 +147,6 @@ int main()
             XGpio_DiscreteWrite(&gpioInst[1], 0x01, !data2);
             data2 = XGpio_DiscreteRead(&gpioInst[2], 0x01);
             XGpio_DiscreteWrite(&gpioInst[2], 0x01, !data2);
-
-            TempRawData = XSysMon_GetAdcData(&sysmonInst, XSM_CH_TEMP);
-            TempData = XSysMon_RawToTemperature(TempRawData);
-            printf("Temperature: %0d.%03d C \r\n", (int)TempData, SysMonFractionToInt(TempData));
 
         }
 
@@ -138,6 +157,11 @@ int main()
             XGpio_DiscreteWrite(&gpioInst[0], 0x01, !data2);
             data2 = XGpio_DiscreteRead(&gpioInst[3], 0x01);
             XGpio_DiscreteWrite(&gpioInst[3], 0x01, !data2);
+
+            printf("\r\nTemperature: %0d.%03d C \r\n", (int)xadcInst.TempData, SysMonFractionToInt(xadcInst.TempData));
+            printf("VCCINT: %0d.%03d V \r\n", (int)xadcInst.VCCINTData, SysMonFractionToInt(xadcInst.VCCINTData));
+            printf("VCCAUX: %0d.%03d V \r\n", (int)xadcInst.VCCAUXData, SysMonFractionToInt(xadcInst.VCCAUXData));
+            printf("VCCBRAM: %0d.%03d V \r\n", (int)xadcInst.VCCBRAMData, SysMonFractionToInt(xadcInst.VCCBRAMData));
         }
 
     }
