@@ -20,6 +20,9 @@ XGpio gpioInst[5];
 XTmrCtr tmrInst;
 XSysMon sysmonInst;
 XSysMon_Config *ConfigPtr;
+XBram bramInst;
+XBram_Config *BramPtr;
+
 XADC_Data xadcInst;
 
 uint64_t testarr[4] = {XPAR_AXI_GPIO_0_BASEADDR, XPAR_AXI_GPIO_1_BASEADDR, XPAR_AXI_GPIO_2_BASEADDR, XPAR_AXI_GPIO_3_BASEADDR};
@@ -77,6 +80,20 @@ int main()
     XGpio_DiscreteWrite(&gpioInst[1], 0x01, rand()%2);
     XGpio_DiscreteWrite(&gpioInst[2], 0x01, rand()%2);
     XGpio_DiscreteWrite(&gpioInst[3], 0x01, rand()%2);
+
+    BramPtr = XBram_LookupConfig(XPAR_AXI_BRAM_CTRL_0_BASEADDR);
+    if(BramPtr == NULL)
+    {
+        printf("Bram failed to get config! \r\n");
+        return XST_FAILURE;
+    }
+
+    status = XBram_CfgInitialize(&bramInst, BramPtr, BramPtr->BaseAddress);
+    if (status != XST_SUCCESS) 
+    {
+        printf("Bram failed to Init! \r\n");
+        return XST_FAILURE;
+    }
     
     status = XTmrCtr_Initialize(&tmrInst, XPAR_AXI_TIMER_0_BASEADDR);
     if (status != XST_SUCCESS) 
