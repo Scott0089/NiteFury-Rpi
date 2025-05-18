@@ -9,6 +9,7 @@
 XGpio gpioInst[5];
 
 uint64_t testarr[4] = {XPAR_AXI_GPIO_0_BASEADDR, XPAR_AXI_GPIO_1_BASEADDR, XPAR_AXI_GPIO_2_BASEADDR, XPAR_AXI_GPIO_3_BASEADDR};
+#define adj_addr XPAR_AXI_GPIO_1_BASEADDR - AXI_Translation
 
 #define TIMER_COUNTER_0	 0
 
@@ -25,7 +26,26 @@ int main()
         return -1;
     }
 
+    printf("GPIO Base Addr: %x \r\n", gpioInst[0].BaseAddress);
     int status;
+    status = XGpio_Initialize(&gpioInst[0], 0x40010000);
+    if (status != XST_SUCCESS) 
+    {
+        printf("GPIO 0 failed to Init!\r\n");
+        return XST_FAILURE;
+    }
+    printf("%x \r\n", gpioInst[0].BaseAddress);
+    //gpioInst[0].BaseAddress = adj_addr;
+    //gpioInst[0].BaseAddress = gpioInst[0].BaseAddress - 0x40000000;
+    //gpioInst[0].BaseAddress = gpioInst[0].BaseAddress + 0x40000000;
+    //XGpio_WriteReg(XPAR_AXI_GPIO_0_BASEADDR-0x40000000, 0x00, OFF);
+
+    XGpio_DiscreteWrite(&gpioInst[0], 0x01, ON);
+    sleep(1);
+    XGpio_DiscreteWrite(&gpioInst[0], 0x01, OFF);
+    
+
+    /*
     for (size_t i = 0; i < 4; i++)
     {
         status = XGpio_Initialize(&gpioInst[i], testarr[i]);
@@ -103,7 +123,7 @@ int main()
         }
         
     }
-    */
+
     while (1)
     {
         for (size_t i = 0; i < 4; i++)
@@ -117,6 +137,8 @@ int main()
             sleep(1);
         }
     }
+
+    */
 
     printf("Everything done! \r\n Exiting... \r\n");
 
