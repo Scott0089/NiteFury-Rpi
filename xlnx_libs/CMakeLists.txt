@@ -6,6 +6,7 @@ file(GLOB_RECURSE XLNX_LIB_SRC
     tmrctr/*.c
     gpio/*.c
     standalone/*.c
+    sysmon/*.c
 )
 
 #define library 
@@ -20,6 +21,7 @@ target_include_directories(xlnx_libs PUBLIC
     standalone
     hw_config
     tmrctr
+    sysmon
     ../sc_libs
     ../
 )

@@ -117,5 +117,21 @@
 #define XPAR_XTMRCTR_0_COMPATIBLE xlnx,axi-timer-2.0
 #define XPAR_XTMRCTR_0_CLOCK_FREQUENCY 0x5f5e100
 
+#define XPAR_XSYSMON_NUM_INSTANCES 1
+
+/* Definitions for peripheral XADC_WIZ_0 */
+#define XPAR_XADC_WIZ_0_COMPATIBLE "xlnx,xadc-wiz-3.3"
+#define XPAR_XADC_WIZ_0_BASEADDR 0x40060000
+#define XPAR_XADC_WIZ_0_HIGHADDR 0x4006ffff
+#define XPAR_XADC_WIZ_0_INCLUDE_INTR 0x1
+#define XPAR_XADC_WIZ_0_IP_TYPE 0x0
+
+/* Canonical definitions for peripheral XADC_WIZ_0 */
+#define XPAR_XSYSMON_0_BASEADDR 0x40060000
+#define XPAR_XSYSMON_0_HIGHADDR 0x4006ffff
+#define XPAR_XSYSMON_0_COMPATIBLE "xlnx,xadc-wiz-3.3"
+#define XPAR_XSYSMON_0_INCLUDE_INTR 0x1
+#define XPAR_XSYSMON_0_IP_TYPE 0x0
+
 
 #endif  /* end of protection macro */

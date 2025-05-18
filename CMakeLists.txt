@@ -30,6 +30,7 @@ include_directories(
     xlnx_libs/standalone
     xlnx_libs/hw_config
     xlnx_libs/tmrctr
+    xlnx_libs/sysmon
     sc_libs
     xdma
 )

@@ -15,7 +15,22 @@ uint64_t testarr[4] = {XPAR_AXI_GPIO_0_BASEADDR, XPAR_AXI_GPIO_1_BASEADDR, XPAR_
 
 XTmrCtr tmrInst;
 
+XSysMon sysmonInst;
+
 int fd = -1;
+
+int SysMonFractionToInt(float FloatNum)
+{
+    float Temp;
+
+    Temp = FloatNum;
+    if(FloatNum < 0)
+    {
+        Temp = -(FloatNum);
+    }
+    
+    return (((int)((Temp - (float)((int)Temp)) * (1000.0f))));
+}
 
 int main()
 {
@@ -25,6 +40,8 @@ int main()
         printf("Failed to open /dev/xdma0_user!\r\n");
         return XST_FAILURE;
     }
+
+    XSysMon_Config *ConfigPtr = NULL;
 
     uint32_t status;
     uint32_t data = NULL;
@@ -74,27 +91,55 @@ int main()
 
     uint8_t data2 = 0x00;
 
+    ConfigPtr = XSysMon_LookupConfig(XPAR_XADC_WIZ_0_BASEADDR);
+    if(ConfigPtr == NULL)
+    {
+        printf("Failed to get XADC Config! \r\n");
+        return XST_FAILURE;
+    }
+
+    status = XSysMon_CfgInitialize(&sysmonInst, ConfigPtr, ConfigPtr->BaseAddress);
+    if(status != XST_SUCCESS)
+    {
+        printf("Failed to init XADC! \r\n");
+        return XST_FAILURE;
+    }
+
+    status = XSysMon_SelfTest(&sysmonInst);
+    if(status != XST_SUCCESS)
+    {
+        printf("XADC Failed Self-Test! \r\n");
+        return XST_FAILURE;
+    }
+
+    u32 TempRawData = 0xFF;
+    float TempData = 0xFF;
+
     while(1)
     {
         if(XTmrCtr_IsExpired(&tmrInst, 1))
         {
-
             XTmrCtr_Reset(&tmrInst, 1);
             data2 = XGpio_DiscreteRead(&gpioInst[1], 0x01);
             XGpio_DiscreteWrite(&gpioInst[1], 0x01, !data2);
             data2 = XGpio_DiscreteRead(&gpioInst[2], 0x01);
             XGpio_DiscreteWrite(&gpioInst[2], 0x01, !data2);
+
+            TempRawData = XSysMon_GetAdcData(&sysmonInst, XSM_CH_TEMP);
+            TempData = XSysMon_RawToTemperature(TempRawData);
+            printf("Temperature: %0d.%03d C \r\n", (int)TempData, SysMonFractionToInt(TempData));
+
         }
 
         if(XTmrCtr_IsExpired(&tmrInst, 0))
         {
-
             XTmrCtr_Reset(&tmrInst, 0);
             data2 = XGpio_DiscreteRead(&gpioInst[0], 0x01);
             XGpio_DiscreteWrite(&gpioInst[0], 0x01, !data2);
             data2 = XGpio_DiscreteRead(&gpioInst[3], 0x01);
             XGpio_DiscreteWrite(&gpioInst[3], 0x01, !data2);
         }
+
     }
 
     printf("Everything done! \r\n Exiting... \r\n");

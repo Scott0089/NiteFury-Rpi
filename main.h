@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include "xgpio.h"
 #include "xtmrctr.h"
+#include "xsysmon.h"
 
 #include <stdio.h>
 #include <stdlib.h>
