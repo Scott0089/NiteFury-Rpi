@@ -10,6 +10,8 @@
 #include "xtmrctr.h"
 #include "xsysmon.h"
 
+#include "sc_io.h"
+
 #define TARGET_PHYS_ADDR 0x40000000 
 
 #define SDT

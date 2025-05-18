@@ -1,10 +1,4 @@
 #include "sc_io.h"
-#include "stdint.h"
-#include <linux/kernel.h>
-#include <linux/module.h>
-#include <linux/pci.h>
-#include <linux/version.h>
-
 
 uint32_t SC_In32(uint64_t addr)
 {

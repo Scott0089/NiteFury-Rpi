@@ -3,7 +3,6 @@
 
 //#include <linux/io.h>
 #include <linux/types.h>
-#include "stdint.h"
 #include "main.h"
 
 uint32_t    SC_In32(uint64_t addr);
