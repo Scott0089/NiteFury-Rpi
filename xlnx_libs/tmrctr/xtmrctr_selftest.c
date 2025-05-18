@@ -79,10 +79,6 @@ int XTmrCtr_SelfTest(XTmrCtr *InstancePtr, u8 TmrCtrNumber)
 	Xil_AssertNonvoid(InstancePtr != NULL);
 	Xil_AssertNonvoid(TmrCtrNumber < XTC_DEVICE_TIMER_COUNT);
 	Xil_AssertNonvoid(InstancePtr->IsReady == XIL_COMPONENT_IS_READY);
-
-	printf("%x \r\n", InstancePtr->BaseAddress);
-	InstancePtr->BaseAddress = InstancePtr->BaseAddress - 0x40000000;
-	printf("%x \r\n", InstancePtr->BaseAddress);
 	/*
 	 * Set the Capture register to 0
 	 */

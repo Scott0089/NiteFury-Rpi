@@ -19,6 +19,7 @@ typedef struct
 XGpio gpioInst[5];
 XTmrCtr tmrInst;
 XSysMon sysmonInst;
+XSysMon_Config *ConfigPtr;
 XADC_Data xadcInst;
 
 uint64_t testarr[4] = {XPAR_AXI_GPIO_0_BASEADDR, XPAR_AXI_GPIO_1_BASEADDR, XPAR_AXI_GPIO_2_BASEADDR, XPAR_AXI_GPIO_3_BASEADDR};
@@ -41,17 +42,14 @@ int SysMonFractionToInt(float FloatNum)
 int main()
 {
     uint32_t status;
-    uint32_t data = NULL;
-    uint8_t data2 = 0x00;
 
     fd = open("/dev/xdma0_user", O_RDWR);
     if(fd < 0)
     {
         printf("Failed to open /dev/xdma0_user!\r\n");
+        printf("Check if Driver is installed. \r\n");
         return XST_FAILURE;
     }
-
-    XSysMon_Config *ConfigPtr = NULL;
 
     status = XGpio_Initialize(&gpioInst[4], XPAR_AXI_GPIO_4_BASEADDR);
     if (status != XST_SUCCESS) 
@@ -60,26 +58,21 @@ int main()
         return XST_FAILURE;
     }
 
-    data = XGpio_DiscreteRead(&gpioInst[4], 0x01);
-
     printf("\n\n\r     ** NiteFury RaspberryPi **\n\r");
-    printf("   FPGA Build/Version: 0x%08X\n\n\r", XGpio_DiscreteRead(&gpioInst[4], 1));
+    printf("   FPGA Build/Version: 0x%08X\n\n\r", XGpio_DiscreteRead(&gpioInst[4], 0x01));
     
     for (size_t i = 0; i < 4; i++)
     {
         status = XGpio_Initialize(&gpioInst[i], testarr[i]);
         if (status != XST_SUCCESS) 
         {
-            printf("GPIO %d failed to Init!\r\n", i);
+            printf("GPIO %ld failed to Init!\r\n", i);
             return XST_FAILURE;
         }
     }
 
-    for (size_t i = 0; i < 2; i++)
-    {
-        XGpio_DiscreteWrite(&gpioInst[i], 0x01, OFF);
-    }
-
+    XGpio_DiscreteWrite(&gpioInst[0], 0x01, OFF);
+    XGpio_DiscreteWrite(&gpioInst[1], 0x01, OFF);
     XGpio_DiscreteWrite(&gpioInst[2], 0x01, ON);
     XGpio_DiscreteWrite(&gpioInst[3], 0x01, ON);
     
@@ -125,19 +118,15 @@ int main()
         if(XTmrCtr_IsExpired(&tmrInst, 1))
         {
             XTmrCtr_Reset(&tmrInst, 1);
-            data2 = XGpio_DiscreteRead(&gpioInst[1], 0x01);
-            XGpio_DiscreteWrite(&gpioInst[1], 0x01, !data2);
-            data2 = XGpio_DiscreteRead(&gpioInst[2], 0x01);
-            XGpio_DiscreteWrite(&gpioInst[2], 0x01, !data2);
+            XGpio_DiscreteWrite(&gpioInst[1], 0x01, !(XGpio_DiscreteRead(&gpioInst[1], 0x01)));
+            XGpio_DiscreteWrite(&gpioInst[2], 0x01, !(XGpio_DiscreteRead(&gpioInst[2], 0x01)));
         }
 
         if(XTmrCtr_IsExpired(&tmrInst, 0))
         {
             XTmrCtr_Reset(&tmrInst, 0);
-            data2 = XGpio_DiscreteRead(&gpioInst[0], 0x01);
-            XGpio_DiscreteWrite(&gpioInst[0], 0x01, !data2);
-            data2 = XGpio_DiscreteRead(&gpioInst[3], 0x01);
-            XGpio_DiscreteWrite(&gpioInst[3], 0x01, !data2);
+            XGpio_DiscreteWrite(&gpioInst[0], 0x01, !(XGpio_DiscreteRead(&gpioInst[0], 0x01)));
+            XGpio_DiscreteWrite(&gpioInst[3], 0x01, !(XGpio_DiscreteRead(&gpioInst[3], 0x01)));
 
             printf("\r\nTemperature: %0d.%03d C \r\n", (int)xadcInst.TempData, SysMonFractionToInt(xadcInst.TempData));
             printf("VCCINT: %0d.%03d V \r\n", (int)xadcInst.VCCINTData, SysMonFractionToInt(xadcInst.VCCINTData));
