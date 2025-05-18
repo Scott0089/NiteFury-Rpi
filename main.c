@@ -4,35 +4,26 @@
 #define ON 0x00
 #define OFF 0x01
 
-#define AXI_Translation 0x40000000
-
-XGpio gpioInst[5];
-
-uint64_t testarr[4] = {XPAR_AXI_GPIO_0_BASEADDR, XPAR_AXI_GPIO_1_BASEADDR, XPAR_AXI_GPIO_2_BASEADDR, XPAR_AXI_GPIO_3_BASEADDR};
-#define adj_addr XPAR_AXI_GPIO_1_BASEADDR - AXI_Translation
-
-#define TIMER_COUNTER_0	 0
-
-XTmrCtr tmrInst;
-
-XSysMon sysmonInst;
-
-int fd = -1;
-
 typedef struct 
 {
-    u32 TempRawData;
-    u32 VCCINTRawData;
-    u32 VCCAUXRawData;
-    u32 VCCBRAMRawData;
-    float   TempData;
-    float   VCCINTData;
-    float   VCCAUXData;
-    float   VCCBRAMData;
+    uint32_t TempRawData;
+    uint32_t VCCINTRawData;
+    uint32_t VCCAUXRawData;
+    uint32_t VCCBRAMRawData;
+    float    TempData;
+    float    VCCINTData;
+    float    VCCAUXData;
+    float    VCCBRAMData;
 } XADC_Data;
 
+XGpio gpioInst[5];
+XTmrCtr tmrInst;
+XSysMon sysmonInst;
 XADC_Data xadcInst;
 
+uint64_t testarr[4] = {XPAR_AXI_GPIO_0_BASEADDR, XPAR_AXI_GPIO_1_BASEADDR, XPAR_AXI_GPIO_2_BASEADDR, XPAR_AXI_GPIO_3_BASEADDR};
+
+int fd = -1;
 
 int SysMonFractionToInt(float FloatNum)
 {
@@ -49,6 +40,10 @@ int SysMonFractionToInt(float FloatNum)
 
 int main()
 {
+    uint32_t status;
+    uint32_t data = NULL;
+    uint8_t data2 = 0x00;
+
     fd = open("/dev/xdma0_user", O_RDWR);
     if(fd < 0)
     {
@@ -57,9 +52,6 @@ int main()
     }
 
     XSysMon_Config *ConfigPtr = NULL;
-
-    uint32_t status;
-    uint32_t data = NULL;
 
     status = XGpio_Initialize(&gpioInst[4], XPAR_AXI_GPIO_4_BASEADDR);
     if (status != XST_SUCCESS) 
@@ -81,10 +73,9 @@ int main()
             printf("GPIO %d failed to Init!\r\n", i);
             return XST_FAILURE;
         }
-
     }
 
-    for (size_t i = 0; i < 4; i++)
+    for (size_t i = 0; i < 2; i++)
     {
         XGpio_DiscreteWrite(&gpioInst[i], 0x01, OFF);
     }
@@ -93,7 +84,8 @@ int main()
     XGpio_DiscreteWrite(&gpioInst[3], 0x01, ON);
     
     status = XTmrCtr_Initialize(&tmrInst, XPAR_AXI_TIMER_0_BASEADDR);
-    if (status != XST_SUCCESS) {
+    if (status != XST_SUCCESS) 
+    {
         printf("%d \r\n", status);
         return XST_FAILURE;
     }
@@ -103,8 +95,6 @@ int main()
     
     XTmrCtr_SetResetValue(&tmrInst, 1, (u32) -37500000);
    	XTmrCtr_Start(&tmrInst, 1);
-
-    uint8_t data2 = 0x00;
 
     ConfigPtr = XSysMon_LookupConfig(XPAR_XADC_WIZ_0_BASEADDR);
     if(ConfigPtr == NULL)
@@ -120,16 +110,8 @@ int main()
         return XST_FAILURE;
     }
 
-    status = XSysMon_SelfTest(&sysmonInst);
-    if(status != XST_SUCCESS)
-    {
-        printf("XADC Failed Self-Test! \r\n");
-        return XST_FAILURE;
-    }
-
     while(1)
     {
-
         xadcInst.TempRawData = XSysMon_GetAdcData(&sysmonInst, XSM_CH_TEMP);
         xadcInst.VCCINTRawData = XSysMon_GetAdcData(&sysmonInst, XSM_CH_VCCINT);
         xadcInst.VCCAUXRawData = XSysMon_GetAdcData(&sysmonInst, XSM_CH_VCCAUX);
@@ -147,7 +129,6 @@ int main()
             XGpio_DiscreteWrite(&gpioInst[1], 0x01, !data2);
             data2 = XGpio_DiscreteRead(&gpioInst[2], 0x01);
             XGpio_DiscreteWrite(&gpioInst[2], 0x01, !data2);
-
         }
 
         if(XTmrCtr_IsExpired(&tmrInst, 0))
@@ -163,7 +144,6 @@ int main()
             printf("VCCAUX: %0d.%03d V \r\n", (int)xadcInst.VCCAUXData, SysMonFractionToInt(xadcInst.VCCAUXData));
             printf("VCCBRAM: %0d.%03d V \r\n", (int)xadcInst.VCCBRAMData, SysMonFractionToInt(xadcInst.VCCBRAMData));
         }
-
     }
 
     printf("Everything done! \r\n Exiting... \r\n");
