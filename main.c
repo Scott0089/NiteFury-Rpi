@@ -43,6 +43,8 @@ int main()
 {
     uint32_t status;
 
+    srand((unsigned int)time(NULL));
+
     fd = open("/dev/xdma0_user", O_RDWR);
     if(fd < 0)
     {
@@ -71,23 +73,20 @@ int main()
         }
     }
 
-    XGpio_DiscreteWrite(&gpioInst[0], 0x01, OFF);
-    XGpio_DiscreteWrite(&gpioInst[1], 0x01, OFF);
-    XGpio_DiscreteWrite(&gpioInst[2], 0x01, ON);
-    XGpio_DiscreteWrite(&gpioInst[3], 0x01, ON);
+    XGpio_DiscreteWrite(&gpioInst[0], 0x01, rand()%2);
+    XGpio_DiscreteWrite(&gpioInst[1], 0x01, rand()%2);
+    XGpio_DiscreteWrite(&gpioInst[2], 0x01, rand()%2);
+    XGpio_DiscreteWrite(&gpioInst[3], 0x01, rand()%2);
     
     status = XTmrCtr_Initialize(&tmrInst, XPAR_AXI_TIMER_0_BASEADDR);
     if (status != XST_SUCCESS) 
     {
-        printf("%d \r\n", status);
+        printf("Timer failed to Init! \r\n");
         return XST_FAILURE;
     }
 
    	XTmrCtr_SetResetValue(&tmrInst, 0, (u32) -50000000);
-   	XTmrCtr_Start(&tmrInst, 0);
-    
     XTmrCtr_SetResetValue(&tmrInst, 1, (u32) -37500000);
-   	XTmrCtr_Start(&tmrInst, 1);
 
     ConfigPtr = XSysMon_LookupConfig(XPAR_XADC_WIZ_0_BASEADDR);
     if(ConfigPtr == NULL)
@@ -102,6 +101,9 @@ int main()
         printf("Failed to init XADC! \r\n");
         return XST_FAILURE;
     }
+
+    XTmrCtr_Start(&tmrInst, 0);
+    XTmrCtr_Start(&tmrInst, 1);
 
     while(1)
     {
