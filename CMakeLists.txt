@@ -32,6 +32,8 @@ include_directories(
     xlnx_libs/tmrctr
     xlnx_libs/sysmon
     xlnx_libs/bram
+    xlnx_libs/v_tpg
+    xlnx_libs/video_common
     sc_libs
     xdma
 )

@@ -32,8 +32,8 @@ int fd = -1;
 void FP_Reset()
 {
     XGpio_WriteReg(XPAR_XGPIO_5_BASEADDR, 0x01, 0x00);
-    sleep(2);
-    XGpio_WriteReg(XPAR_XGPIO_5_BASEADDR, 0x01, 0x00);
+    usleep(50);
+    XGpio_WriteReg(XPAR_XGPIO_5_BASEADDR, 0x01, 0x01);
 }
 
 int SysMonFractionToInt(float FloatNum)
@@ -129,8 +129,11 @@ int main()
     XTmrCtr_Start(&tmrInst, 0);
     XTmrCtr_Start(&tmrInst, 1);
 
-    while(1)
-    {
+    int x = 0x00;
+
+    while(x != 0x05)
+    {   
+        
         xadcInst.TempRawData = XSysMon_GetAdcData(&sysmonInst, XSM_CH_TEMP);
         xadcInst.VCCINTRawData = XSysMon_GetAdcData(&sysmonInst, XSM_CH_VCCINT);
         xadcInst.VCCAUXRawData = XSysMon_GetAdcData(&sysmonInst, XSM_CH_VCCAUX);
@@ -158,6 +161,7 @@ int main()
             printf("VCCINT: %0d.%03d V \r\n", (int)xadcInst.VCCINTData, SysMonFractionToInt(xadcInst.VCCINTData));
             printf("VCCAUX: %0d.%03d V \r\n", (int)xadcInst.VCCAUXData, SysMonFractionToInt(xadcInst.VCCAUXData));
             printf("VCCBRAM: %0d.%03d V \r\n", (int)xadcInst.VCCBRAMData, SysMonFractionToInt(xadcInst.VCCBRAMData));
+            x = x + 1;
         }
     }
 

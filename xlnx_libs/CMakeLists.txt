@@ -8,6 +8,8 @@ file(GLOB_RECURSE XLNX_LIB_SRC
     standalone/*.c
     sysmon/*.c
     bram/*.c
+    v_tpg/*.c
+    video_common/*.c
 )
 
 #define library 
@@ -24,6 +26,8 @@ target_include_directories(xlnx_libs PUBLIC
     tmrctr
     sysmon
     bram
+    v_tpg
+    video_common
     ../sc_libs
     ../
 )

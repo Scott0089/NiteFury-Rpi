@@ -10,6 +10,8 @@
 #include "xtmrctr.h"
 #include "xsysmon.h"
 #include "xbram.h"
+#include "xv_tpg.h"
+#include "xvidc.h"
 
 #include "sc_io.h"
 
