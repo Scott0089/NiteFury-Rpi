@@ -4,6 +4,10 @@
 #define ON 0x00
 #define OFF 0x01
 
+#define READ_SIZE 4096           // Read 4 KB chunks
+#define TOTAL_BYTES 32768        // Total bytes to read
+
+
 typedef struct 
 {
     uint32_t TempRawData;
@@ -34,6 +38,13 @@ int fd = -1;
 int fd_read = -1;
 int hex_fd = -1;
 
+void write_hex(FILE *out, uint8_t *buffer, ssize_t len) {
+    for (ssize_t i = 0; i < len; i++) {
+        fprintf(out, "%02x", buffer[i]);
+    }
+    fprintf(out, "\n");
+}
+
 int SysMonFractionToInt(float FloatNum)
 {
     float Temp;
@@ -50,12 +61,6 @@ int SysMonFractionToInt(float FloatNum)
 int tpg()
 {
     uint32_t status;
-    ssize_t rc = 0;
-    ssize_t bytes_done = 0;
-    ssize_t out_offset = 0;
-
-    char* allocated = NULL;
-    char* buffer = NULL;
 
     TpgPtr = XV_tpg_LookupConfig(XPAR_V_TPG_0_BASEADDR);
     if (TpgPtr == NULL)
@@ -74,10 +79,10 @@ int tpg()
 
 	XV_tpg_Set_height(&tpgInst, 1080);
 	XV_tpg_Set_width(&tpgInst, 1920);
-	XV_tpg_Set_colorFormat(&tpgInst, XVIDC_CSF_YCRCB_422);
+	XV_tpg_Set_colorFormat(&tpgInst, XVIDC_CSF_RGB);
 	XV_tpg_Set_maskId(&tpgInst, 0);
 	XV_tpg_Set_motionSpeed(&tpgInst, 5);
-	XV_tpg_Set_bckgndId(&tpgInst, 0x8);
+	XV_tpg_Set_bckgndId(&tpgInst, XTPG_BKGND_SOLID_BLACK);
 	XV_tpg_Set_boxSize(&tpgInst, 50);
 	XV_tpg_Set_boxColorR(&tpgInst, 0xFF);
 	XV_tpg_Set_boxColorG(&tpgInst, 0xFF);
@@ -97,47 +102,50 @@ int tpg()
 
     printf("TPG Started\r\n");
 
-    hex_fd = open("VideoOut.bin", O_RDWR | O_CREAT | O_TRUNC | O_SYNC, 0666);
-    if(hex_fd < 0)
-    {
-        printf("Unable to Open File! \r\n");
-        return XST_FAILURE;
+    while(1){}
+
+    return XST_SUCCESS;
+}
+
+int streaming()
+{
+    int dev_fd = open("/dev/xdma0_c2h_0", O_RDONLY);
+    if (dev_fd < 0) {
+        perror("Error opening XDMA device");
+        return EXIT_FAILURE;
     }
 
-    posix_memalign((void **)&allocated, 4096 /*alignment */ , 32 + 4096);
-	if (!allocated) 
-    {
-        printf("Failed to allocate memory! \r\n");
-        return XST_FAILURE;
-	}
-
-    buffer = allocated + 0x00;
-
-    for (size_t i = 0; i < 10000; i++)
-    {
-        printf("Time: %d \r", i);
-        rc = read_to_buffer("/dev/xdma0_c2h_0", fd_read, buffer, 32, 0x00);
-        if (rc < 0)
-        {
-            printf("Failed to read\r\n");
-            return XST_FAILURE;
-        }
-        bytes_done = rc;
-        
-        rc = write_from_buffer("VideoOut.hex", hex_fd, buffer,
-            bytes_done, out_offset);
-        if (rc < 0)
-        {
-            printf("Failed to write to file \r\n");
-            return XST_FAILURE;
-        }
-        out_offset += bytes_done;
+    FILE *hex_out = fopen("VideoOut.hex", "w");
+    if (!hex_out) {
+        perror("Error opening output file");
+        close(dev_fd);
+        return EXIT_FAILURE;
     }
-    
-    XV_tpg_DisableAutoRestart(&tpgInst);
 
-    free(allocated);
-    close(hex_fd);
+    uint8_t buffer[READ_SIZE];
+    ssize_t bytes_read = 0;
+    ssize_t total_read = 0;
+
+    while (total_read < TOTAL_BYTES) {
+        ssize_t to_read = (TOTAL_BYTES - total_read > READ_SIZE) ? READ_SIZE : TOTAL_BYTES - total_read;
+        bytes_read = read(dev_fd, buffer, to_read);
+
+        if (bytes_read < 0) {
+            perror("Error reading from XDMA");
+            break;
+        } else if (bytes_read == 0) {
+            printf("End of stream or no data available.\n");
+            break;
+        }
+
+        write_hex(hex_out, buffer, bytes_read);
+        total_read += bytes_read;
+
+        printf("Read %zd / %d bytes...\n", total_read, TOTAL_BYTES);
+    }
+
+    close(dev_fd);
+    close(hex_out);
 
     return XST_SUCCESS;
 }
@@ -156,13 +164,6 @@ int main()
         return XST_FAILURE;
     }
 
-    fd_read = open("/dev/xdma0_c2h_0", O_RDWR | O_TRUNC);
-    if(fd < 0)
-    {
-        printf("Failed to open /dev/xdma0_c2h_0!\r\n");
-        printf("Check if Driver is installed. \r\n");
-        return XST_FAILURE;
-    }
 
     status = XGpio_Initialize(&gpioInst[4], XPAR_AXI_GPIO_4_BASEADDR);
     if (status != XST_SUCCESS) 
@@ -234,6 +235,8 @@ int main()
 
     int x = 0x00;
 
+    streaming();
+
     while(x != 0x05)
     {   
         xadcInst.TempRawData = XSysMon_GetAdcData(&sysmonInst, XSM_CH_TEMP);
@@ -269,11 +272,9 @@ int main()
 
     printf("Everything done! \r\n Exiting... \r\n");
 
+    XV_tpg_DisableAutoRestart(&tpgInst);
+
     close(fd);
-    close(fd_read);
-    close(hex_fd);
-
-
 
     return 0;
 }
