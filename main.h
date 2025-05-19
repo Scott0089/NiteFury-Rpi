@@ -6,6 +6,11 @@
 #include <errno.h>
 #include <fcntl.h>
 
+#undef __LINUX__
+
+//#include "tpg.h"
+#include "sc_io.h"
+
 #include "xgpio.h"
 #include "xtmrctr.h"
 #include "xsysmon.h"
@@ -13,11 +18,13 @@
 #include "xv_tpg.h"
 #include "xvidc.h"
 
-#include "sc_io.h"
+#include "dma_utils.h"
 
 #define TARGET_PHYS_ADDR 0x40000000 
 
-#define SDT
+//#define SDT
+
+
 
 extern int fd;
 

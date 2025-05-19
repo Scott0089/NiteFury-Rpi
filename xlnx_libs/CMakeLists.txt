@@ -20,6 +20,8 @@ target_link_libraries(xlnx_libs m)
 
 # Add include directories
 target_include_directories(xlnx_libs PUBLIC
+    ../sc_libs
+    ../
     gpio
     standalone
     hw_config
@@ -28,6 +30,6 @@ target_include_directories(xlnx_libs PUBLIC
     bram
     v_tpg
     video_common
-    ../sc_libs
-    ../
 )
+
+message(STATUS "SC_LIBS_SRCS = ${SC_LIBS_SRCS}")

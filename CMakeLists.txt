@@ -4,6 +4,11 @@ cmake_minimum_required(VERSION 3.2)
 # Project name and language
 project(NiteFury LANGUAGES C)
 
+# Add Definitions
+
+add_definitions(-DSDT)
+add_definitions(-U__linux__)
+
 # Set build type if not provided
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
@@ -26,6 +31,7 @@ add_subdirectory(xlnx_libs)
 
 # Add directories to the include path
 include_directories(
+    sc_libs
     xlnx_libs/gpio
     xlnx_libs/standalone
     xlnx_libs/hw_config
@@ -34,8 +40,6 @@ include_directories(
     xlnx_libs/bram
     xlnx_libs/v_tpg
     xlnx_libs/video_common
-    sc_libs
-    xdma
 )
 
 # add_library(xdma STATIC ${XDMA_SRCS})
