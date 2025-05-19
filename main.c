@@ -237,7 +237,6 @@ int streaming() {
     return XST_SUCCESS;
 }
 
-
 int main()
 {
     uint32_t status;
@@ -377,7 +376,7 @@ int main()
 
     printf("Everything done! \r\n Exiting... \r\n");
 
-     XV_tpg_DisableAutoRestart(&tpgInst);
+    XV_tpg_DisableAutoRestart(&tpgInst);
     tpg_reset();
 
     close(fd);
