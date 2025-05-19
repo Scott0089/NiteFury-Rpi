@@ -59,6 +59,15 @@ int SysMonFractionToInt(float FloatNum)
     return (((int)((Temp - (float)((int)Temp)) * (1000.0f))));
 }
 
+int tpg_reset()
+{
+    XGpio_WriteReg(XPAR_XGPIO_5_BASEADDR, 0x01, 0x00);
+    usleep(300000);
+    XGpio_WriteReg(XPAR_XGPIO_5_BASEADDR, 0x01, 0x01);
+
+    return XST_SUCCESS;
+}
+
 int tpg()
 {
     uint32_t status;
@@ -78,7 +87,7 @@ int tpg()
 
     XGpio_WriteReg(XPAR_XGPIO_5_BASEADDR, 0x01, 0x01);
 
-    printf("TPG Init Success\r\n");
+    //printf("TPG Init Success\r\n");
 
 	XV_tpg_Set_height(&tpgInst, FRAME_HEIGHT);
 	XV_tpg_Set_width(&tpgInst, FRAME_WIDTH);
@@ -86,23 +95,21 @@ int tpg()
 	XV_tpg_Set_maskId(&tpgInst, 0);
 	XV_tpg_Set_motionSpeed(&tpgInst, 0);
     XV_tpg_Set_motionEn(&tpgInst, 0);
-	XV_tpg_Set_bckgndId(&tpgInst, XTPG_BKGND_SOLID_RED);
+	XV_tpg_Set_bckgndId(&tpgInst, XTPG_BKGND_CHECKER_BOARD);
 
-    printf("Finished Config\r\n");
+    //printf("Finished Config\r\n");
     
     XV_tpg_DisableAutoRestart(&tpgInst);
     XV_tpg_Start(&tpgInst);
 
-    printf("TPG Started\r\n");
+    //printf("TPG Started\r\n");
 
     //printf("Data: %x \r\n", XV_tpg_ReadReg(XPAR_V_TPG_0_BASEADDR, XV_TPG_CTRL_ADDR_AP_CTRL));
 
     
-    printf("Resetting TPG! \r\n");
-    XGpio_WriteReg(XPAR_XGPIO_5_BASEADDR, 0x01, 0x00);
-    sleep(2);
-    XGpio_WriteReg(XPAR_XGPIO_5_BASEADDR, 0x01, 0x01);
-    printf("Done resetting TPG\r\n");
+    //printf("Resetting TPG! \r\n");
+    //tpg_reset();
+    //printf("Done resetting TPG\r\n");
 
     //while(!XV_tpg_IsIdle(&tpgInst));
 
@@ -147,7 +154,20 @@ int streaming()
         return XST_FAILURE;
     }
 
-    fwrite(frame_buffer, 1, bytes_read, fout);
+    if(bytes_read == FRAME_SIZE)
+    {
+        fwrite(frame_buffer, 1, bytes_read, fout);
+    }
+    else
+    {
+        printf("Incomplete Frame: Expected %d bytes and got %ld bytes", FRAME_SIZE, bytes_read);
+        fclose(fout);
+        close(fd_read);
+        free(frame_buffer);
+        return XST_FAILURE;
+    }
+
+
     fclose(fout);
 
     close(fd_read);
@@ -240,9 +260,7 @@ int main()
 
     int x = 0x00;
 
-    streaming();
-
-    while(x != 10000)
+    while(x != 1)
     {   
         xadcInst.TempRawData = XSysMon_GetAdcData(&sysmonInst, XSM_CH_TEMP);
         xadcInst.VCCINTRawData = XSysMon_GetAdcData(&sysmonInst, XSM_CH_VCCINT);
@@ -274,10 +292,18 @@ int main()
             x = x + 1;
         }
     }
-
+    /*
+    status = streaming();
+    if(status != XST_SUCCESS)
+    {
+        printf("Failed to Capture Frame! \r\n");
+        return XST_FAILURE;
+    }
+*/
     printf("Everything done! \r\n Exiting... \r\n");
 
     XV_tpg_DisableAutoRestart(&tpgInst);
+    //tpg_reset();
 
     close(fd);
 
