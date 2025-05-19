@@ -101,9 +101,9 @@ int tpg()
     XV_tpg_Set_width(&tpgInst, FRAME_WIDTH);
     XV_tpg_Set_colorFormat(&tpgInst, XVIDC_CSF_RGB);
     //XV_tpg_Set_maskId(&tpgInst, 0);
-    //XV_tpg_Set_motionSpeed(&tpgInst, 5);
-    XV_tpg_Set_motionEn(&tpgInst, 0);
-    XV_tpg_Set_bckgndId(&tpgInst, XTPG_BKGND_CHECKER_BOARD);
+    XV_tpg_Set_motionSpeed(&tpgInst, 50);
+    XV_tpg_Set_motionEn(&tpgInst, 1);
+    XV_tpg_Set_bckgndId(&tpgInst, XTPG_BKGND_COLOR_BARS);
 
     XV_tpg_Set_boxColorB(&tpgInst, 0xFF);
     XV_tpg_Set_boxColorR(&tpgInst, 0xFF);
@@ -115,7 +115,7 @@ int tpg()
 
     // printf("Finished Config\r\n");
 
-    XV_tpg_DisableAutoRestart(&tpgInst);
+    XV_tpg_EnableAutoRestart(&tpgInst);
     XV_tpg_Start(&tpgInst);
 
     // printf("TPG Started\r\n");
@@ -127,13 +127,10 @@ int tpg()
 
     // while(!XV_tpg_IsIdle(&tpgInst));
 
-
-
-
     return XST_SUCCESS;
 }
 
-int streaming() {
+int streaming(char* filename) {
     int fd_read;
     ssize_t bytes_read, total_read;
     size_t padded_width = ((FRAME_WIDTH + 7) / 8) * 8;
@@ -144,14 +141,14 @@ int streaming() {
     uint8_t* input_buffer = malloc(frame_bytes);
     if (!input_buffer) {
         printf("Malloc failed for input_buffer\n");
-        return -1;
+        return XST_FAILURE;
     }
 
     uint8_t* output_buffer = malloc(FRAME_WIDTH * FRAME_HEIGHT * 3);
     if (!output_buffer) {
         printf("Malloc failed for output_buffer\n");
         free(input_buffer);
-        return -1;
+        return XST_FAILURE;
     }
 
     fd_read = open("/dev/xdma0_c2h_0", O_RDONLY);
@@ -159,7 +156,7 @@ int streaming() {
         printf("Failed to open DMA device\n");
         free(input_buffer);
         free(output_buffer);
-        return -1;
+        return XST_FAILURE;
     }
 
     total_read = 0;
@@ -170,7 +167,7 @@ int streaming() {
             free(input_buffer);
             free(output_buffer);
             close(fd_read);
-            return -1;
+            return XST_FAILURE;
         }
         if (bytes_read == 0) break; // EOF unexpected here
         total_read += bytes_read;
@@ -181,9 +178,10 @@ int streaming() {
         free(input_buffer);
         free(output_buffer);
         close(fd_read);
-        return -1;
+        return XST_FAILURE;
     }
 
+    //I used chatgpt for this. Dont kill me
     // Unpack pixels
     // Treat input_buffer as array of 64-bit words (2 pixels each)
     uint64_t* pixels_64 = (uint64_t*)input_buffer;
@@ -219,13 +217,13 @@ int streaming() {
         }
     }
 
-    FILE* fout = fopen("frame.rgb", "wb");
+    FILE* fout = fopen(filename, "wb");
     if (!fout) {
         printf("Failed to open output file\n");
         free(input_buffer);
         free(output_buffer);
         close(fd_read);
-        return -1;
+        return XST_FAILURE;
     }
 
     fwrite(output_buffer, 1, FRAME_WIDTH * FRAME_HEIGHT * 3, fout);
@@ -235,8 +233,8 @@ int streaming() {
     free(output_buffer);
     close(fd_read);
 
-    printf("Frame successfully saved to frame.rgb\n");
-    return 0;
+    printf("Frame successfully saved to %s\n", filename);
+    return XST_SUCCESS;
 }
 
 
@@ -367,16 +365,21 @@ int main()
         }
     }
 
-    status = streaming();
-    if (status != XST_SUCCESS)
+    char* arr[5] = {"frame1.rgb","frame2.rgb","frame3.rgb","frame4.rgb","frame5.rgb"};
+
+    for (size_t i = 0; i < 5; i++)
     {
-        printf("Failed to Capture Frame! \r\n");
-        return XST_FAILURE;
+        status = streaming(arr[i]);
+        if (status != XST_SUCCESS)
+        {
+            printf("Failed to Capture Frame! \r\n");
+            return XST_FAILURE;
+        }
     }
 
     printf("Everything done! \r\n Exiting... \r\n");
 
-    // XV_tpg_DisableAutoRestart(&tpgInst);
+     XV_tpg_DisableAutoRestart(&tpgInst);
     tpg_reset();
 
     close(fd);
