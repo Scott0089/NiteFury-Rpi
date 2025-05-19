@@ -4,21 +4,21 @@
 #define ON 0x00
 #define OFF 0x01
 
-#define FRAME_WIDTH   1920
-#define FRAME_HEIGHT  1080
-#define BYTES_PER_PIXEL 3  // RGB888
+#define FRAME_WIDTH 1920
+#define FRAME_HEIGHT 1080
+#define BYTES_PER_PIXEL 3 // RGB888
 #define FRAME_SIZE (FRAME_WIDTH * FRAME_HEIGHT * BYTES_PER_PIXEL)
 
-typedef struct 
+typedef struct
 {
     uint32_t TempRawData;
     uint32_t VCCINTRawData;
     uint32_t VCCAUXRawData;
     uint32_t VCCBRAMRawData;
-    float    TempData;
-    float    VCCINTData;
-    float    VCCAUXData;
-    float    VCCBRAMData;
+    float TempData;
+    float VCCINTData;
+    float VCCAUXData;
+    float VCCBRAMData;
 } XADC_Data;
 
 XGpio gpioInst[5];
@@ -29,18 +29,26 @@ XBram bramInst;
 XBram_Config *BramPtr;
 
 XV_tpg_Config *TpgPtr;
-XV_tpg  tpgInst;
+XV_tpg tpgInst;
 
 XADC_Data xadcInst;
 
+XGpio tpgresetInst;
+
 uint64_t testarr[4] = {XPAR_AXI_GPIO_0_BASEADDR, XPAR_AXI_GPIO_1_BASEADDR, XPAR_AXI_GPIO_2_BASEADDR, XPAR_AXI_GPIO_3_BASEADDR};
+
+static inline uint8_t convert_10bit_to_8bit(uint16_t val10) {
+    return (uint8_t)((val10 * 255 + 511) / 1023);
+}
 
 int fd = -1;
 int fd_read = -1;
 int hex_fd = -1;
 
-void write_hex(FILE *out, uint8_t *buffer, ssize_t len) {
-    for (ssize_t i = 0; i < len; i++) {
+void write_hex(FILE *out, uint8_t *buffer, ssize_t len)
+{
+    for (ssize_t i = 0; i < len; i++)
+    {
         fprintf(out, "%02x", buffer[i]);
     }
     fprintf(out, "\n");
@@ -51,19 +59,19 @@ int SysMonFractionToInt(float FloatNum)
     float Temp;
 
     Temp = FloatNum;
-    if(FloatNum < 0)
+    if (FloatNum < 0)
     {
         Temp = -(FloatNum);
     }
-    
+
     return (((int)((Temp - (float)((int)Temp)) * (1000.0f))));
 }
 
 int tpg_reset()
 {
-    XGpio_WriteReg(XPAR_XGPIO_5_BASEADDR, 0x01, 0x00);
+    XGpio_DiscreteWrite(&tpgresetInst, 0x01, 0x00);
     usleep(300000);
-    XGpio_WriteReg(XPAR_XGPIO_5_BASEADDR, 0x01, 0x01);
+    XGpio_DiscreteWrite(&tpgresetInst, 0x01, 0x01);
 
     return XST_SUCCESS;
 }
@@ -85,96 +93,152 @@ int tpg()
         return XST_FAILURE;
     }
 
-    XGpio_WriteReg(XPAR_XGPIO_5_BASEADDR, 0x01, 0x01);
+    tpg_reset();
 
-    //printf("TPG Init Success\r\n");
+    // printf("TPG Init Success\r\n");
 
-	XV_tpg_Set_height(&tpgInst, FRAME_HEIGHT);
-	XV_tpg_Set_width(&tpgInst, FRAME_WIDTH);
-	XV_tpg_Set_colorFormat(&tpgInst, XVIDC_CSF_RGB);
-	XV_tpg_Set_maskId(&tpgInst, 0);
-	XV_tpg_Set_motionSpeed(&tpgInst, 0);
+    XV_tpg_Set_height(&tpgInst, FRAME_HEIGHT);
+    XV_tpg_Set_width(&tpgInst, FRAME_WIDTH);
+    XV_tpg_Set_colorFormat(&tpgInst, XVIDC_CSF_RGB);
+    //XV_tpg_Set_maskId(&tpgInst, 0);
+    //XV_tpg_Set_motionSpeed(&tpgInst, 5);
     XV_tpg_Set_motionEn(&tpgInst, 0);
-	XV_tpg_Set_bckgndId(&tpgInst, XTPG_BKGND_CHECKER_BOARD);
+    XV_tpg_Set_bckgndId(&tpgInst, XTPG_BKGND_CHECKER_BOARD);
 
-    //printf("Finished Config\r\n");
+    XV_tpg_Set_boxColorB(&tpgInst, 0xFF);
+    XV_tpg_Set_boxColorR(&tpgInst, 0xFF);
+    XV_tpg_Set_boxColorG(&tpgInst, 0xFF);
+    XV_tpg_Set_boxSize(&tpgInst, 50);
+
+    XV_tpg_Set_ovrlayId(&tpgInst, 0x01);
     
+
+    // printf("Finished Config\r\n");
+
     XV_tpg_DisableAutoRestart(&tpgInst);
     XV_tpg_Start(&tpgInst);
 
-    //printf("TPG Started\r\n");
+    // printf("TPG Started\r\n");
 
-    //printf("Data: %x \r\n", XV_tpg_ReadReg(XPAR_V_TPG_0_BASEADDR, XV_TPG_CTRL_ADDR_AP_CTRL));
+    // printf("Data: %x \r\n", XV_tpg_ReadReg(XPAR_V_TPG_0_BASEADDR, XV_TPG_CTRL_ADDR_AP_CTRL));
 
-    
-    //printf("Resetting TPG! \r\n");
-    //tpg_reset();
-    //printf("Done resetting TPG\r\n");
+    // printf("Resetting TPG! \r\n");
+    // printf("Done resetting TPG\r\n");
 
-    //while(!XV_tpg_IsIdle(&tpgInst));
+    // while(!XV_tpg_IsIdle(&tpgInst));
+
+
+
 
     return XST_SUCCESS;
 }
 
-int streaming()
-{
-    uint8_t* frame_buffer;
-    ssize_t bytes_read;
-    
-    frame_buffer = malloc(FRAME_SIZE);
-    if(!frame_buffer)
-    {
-        printf("Malloc Failed! \r\n");
-        return XST_FAILURE;
+int streaming() {
+    int fd_read;
+    ssize_t bytes_read, total_read;
+    size_t padded_width = ((FRAME_WIDTH + 7) / 8) * 8;
+    size_t stride_2pixels = padded_width / 2; // number of 64-bit words per line
+    size_t stride_bytes = stride_2pixels * 8; // 8 bytes per 2 pixels
+    size_t frame_bytes = stride_bytes * FRAME_HEIGHT;
+
+    uint8_t* input_buffer = malloc(frame_bytes);
+    if (!input_buffer) {
+        printf("Malloc failed for input_buffer\n");
+        return -1;
+    }
+
+    uint8_t* output_buffer = malloc(FRAME_WIDTH * FRAME_HEIGHT * 3);
+    if (!output_buffer) {
+        printf("Malloc failed for output_buffer\n");
+        free(input_buffer);
+        return -1;
     }
 
     fd_read = open("/dev/xdma0_c2h_0", O_RDONLY);
-    if(fd_read < 0)
-    {
-        printf("Opening C2H Failed! \r\n");
-        free(frame_buffer);
-        return XST_FAILURE;
+    if (fd_read < 0) {
+        printf("Failed to open DMA device\n");
+        free(input_buffer);
+        free(output_buffer);
+        return -1;
     }
 
-    bytes_read = pread(fd_read, frame_buffer, FRAME_SIZE, 0x00);
-    if(bytes_read < 0)
-    {
-        printf("Reading Failed! \r\n");
-        free(frame_buffer);
+    total_read = 0;
+    while (total_read < frame_bytes) {
+        bytes_read = pread(fd_read, input_buffer + total_read, frame_bytes - total_read, total_read);
+        if (bytes_read < 0) {
+            printf("Failed to read from DMA\n");
+            free(input_buffer);
+            free(output_buffer);
+            close(fd_read);
+            return -1;
+        }
+        if (bytes_read == 0) break; // EOF unexpected here
+        total_read += bytes_read;
+    }
+
+    if (total_read != frame_bytes) {
+        printf("Incomplete frame read: expected %zu, got %zd\n", frame_bytes, total_read);
+        free(input_buffer);
+        free(output_buffer);
         close(fd_read);
-        return XST_FAILURE;
+        return -1;
     }
 
-    FILE *fout = fopen("VideoOut.rgb", "wb");
-    if(!fout)
-    {
-        printf("Cant open file! \r\n");
+    // Unpack pixels
+    // Treat input_buffer as array of 64-bit words (2 pixels each)
+    uint64_t* pixels_64 = (uint64_t*)input_buffer;
+
+    for (size_t row = 0; row < FRAME_HEIGHT; row++) {
+        size_t out_col = 0;
+        for (size_t col = 0; col < stride_2pixels; col++) {
+            uint64_t word = pixels_64[row * stride_2pixels + col];
+
+            // Extract first pixel (bits 0-29)
+            uint32_t pix1 = (uint32_t)(word & 0x3FFFFFFF);
+            uint16_t g10_1 = pix1 & 0x3FF;
+            uint16_t b10_1 = (pix1 >> 10) & 0x3FF;
+            uint16_t r10_1 = (pix1 >> 20) & 0x3FF;
+            if (out_col < FRAME_WIDTH) {
+                output_buffer[(row * FRAME_WIDTH + out_col) * 3 + 0] = convert_10bit_to_8bit(g10_1);
+                output_buffer[(row * FRAME_WIDTH + out_col) * 3 + 1] = convert_10bit_to_8bit(b10_1);
+                output_buffer[(row * FRAME_WIDTH + out_col) * 3 + 2] = convert_10bit_to_8bit(r10_1);
+            }
+            out_col++;
+
+            // Extract second pixel (bits 30-59)
+            uint32_t pix2 = (uint32_t)((word >> 30) & 0x3FFFFFFF);
+            uint16_t g10_2 = pix2 & 0x3FF;
+            uint16_t b10_2 = (pix2 >> 10) & 0x3FF;
+            uint16_t r10_2 = (pix2 >> 20) & 0x3FF;
+            if (out_col < FRAME_WIDTH) {
+                output_buffer[(row * FRAME_WIDTH + out_col) * 3 + 0] = convert_10bit_to_8bit(g10_2);
+                output_buffer[(row * FRAME_WIDTH + out_col) * 3 + 1] = convert_10bit_to_8bit(b10_2);
+                output_buffer[(row * FRAME_WIDTH + out_col) * 3 + 2] = convert_10bit_to_8bit(r10_2);
+            }
+            out_col++;
+        }
+    }
+
+    FILE* fout = fopen("frame.rgb", "wb");
+    if (!fout) {
+        printf("Failed to open output file\n");
+        free(input_buffer);
+        free(output_buffer);
         close(fd_read);
-        free(frame_buffer);
-        return XST_FAILURE;
+        return -1;
     }
 
-    if(bytes_read == FRAME_SIZE)
-    {
-        fwrite(frame_buffer, 1, bytes_read, fout);
-    }
-    else
-    {
-        printf("Incomplete Frame: Expected %d bytes and got %ld bytes", FRAME_SIZE, bytes_read);
-        fclose(fout);
-        close(fd_read);
-        free(frame_buffer);
-        return XST_FAILURE;
-    }
-
-
+    fwrite(output_buffer, 1, FRAME_WIDTH * FRAME_HEIGHT * 3, fout);
     fclose(fout);
 
+    free(input_buffer);
+    free(output_buffer);
     close(fd_read);
-    free(frame_buffer);
 
-    return XST_SUCCESS;
+    printf("Frame successfully saved to frame.rgb\n");
+    return 0;
 }
+
 
 int main()
 {
@@ -183,7 +247,7 @@ int main()
     srand((unsigned int)time(NULL));
 
     fd = open("/dev/xdma0_user", O_RDWR);
-    if(fd < 0)
+    if (fd < 0)
     {
         printf("Failed to open /dev/xdma0_user!\r\n");
         printf("Check if Driver is installed. \r\n");
@@ -191,7 +255,7 @@ int main()
     }
 
     status = XGpio_Initialize(&gpioInst[4], XPAR_AXI_GPIO_4_BASEADDR);
-    if (status != XST_SUCCESS) 
+    if (status != XST_SUCCESS)
     {
         printf("GPIO Read failed to Init!\r\n");
         return XST_FAILURE;
@@ -200,56 +264,66 @@ int main()
     printf("\n\n\r     ** NiteFury RaspberryPi **\n\r");
     printf("   FPGA Build/Version: 0x%08X\n\n\r", XGpio_DiscreteRead(&gpioInst[4], 0x01));
 
+    status = XGpio_Initialize(&tpgresetInst, XPAR_XGPIO_5_BASEADDR);
+    if (status != XST_SUCCESS)
+    {
+        printf("Failed to Init TPG Reset GPIO! \r\n");
+        close(fd);
+        return XST_FAILURE;
+    }
+
+    XGpio_DiscreteWrite(&tpgresetInst, 0x01, 0x01);
+
     tpg();
 
     for (size_t i = 0; i < 4; i++)
     {
         status = XGpio_Initialize(&gpioInst[i], testarr[i]);
-        if (status != XST_SUCCESS) 
+        if (status != XST_SUCCESS)
         {
             printf("GPIO %ld failed to Init!\r\n", i);
             return XST_FAILURE;
         }
     }
 
-    XGpio_DiscreteWrite(&gpioInst[0], 0x01, rand()%2);
-    XGpio_DiscreteWrite(&gpioInst[1], 0x01, rand()%2);
-    XGpio_DiscreteWrite(&gpioInst[2], 0x01, rand()%2);
-    XGpio_DiscreteWrite(&gpioInst[3], 0x01, rand()%2);
+    XGpio_DiscreteWrite(&gpioInst[0], 0x01, rand() % 2);
+    XGpio_DiscreteWrite(&gpioInst[1], 0x01, rand() % 2);
+    XGpio_DiscreteWrite(&gpioInst[2], 0x01, rand() % 2);
+    XGpio_DiscreteWrite(&gpioInst[3], 0x01, rand() % 2);
 
     BramPtr = XBram_LookupConfig(XPAR_AXI_BRAM_CTRL_0_BASEADDR);
-    if(BramPtr == NULL)
+    if (BramPtr == NULL)
     {
         printf("Bram failed to get config! \r\n");
         return XST_FAILURE;
     }
 
     status = XBram_CfgInitialize(&bramInst, BramPtr, BramPtr->BaseAddress);
-    if (status != XST_SUCCESS) 
+    if (status != XST_SUCCESS)
     {
         printf("Bram failed to Init! \r\n");
         return XST_FAILURE;
     }
-    
+
     status = XTmrCtr_Initialize(&tmrInst, XPAR_AXI_TIMER_0_BASEADDR);
-    if (status != XST_SUCCESS) 
+    if (status != XST_SUCCESS)
     {
         printf("Timer failed to Init! \r\n");
         return XST_FAILURE;
     }
 
-   	XTmrCtr_SetResetValue(&tmrInst, 0, (u32) -50000000);
-    XTmrCtr_SetResetValue(&tmrInst, 1, (u32) -37500000);
+    XTmrCtr_SetResetValue(&tmrInst, 0, (u32)-50000000);
+    XTmrCtr_SetResetValue(&tmrInst, 1, (u32)-37500000);
 
     ConfigPtr = XSysMon_LookupConfig(XPAR_XADC_WIZ_0_BASEADDR);
-    if(ConfigPtr == NULL)
+    if (ConfigPtr == NULL)
     {
         printf("Failed to get XADC Config! \r\n");
         return XST_FAILURE;
     }
 
     status = XSysMon_CfgInitialize(&sysmonInst, ConfigPtr, ConfigPtr->BaseAddress);
-    if(status != XST_SUCCESS)
+    if (status != XST_SUCCESS)
     {
         printf("Failed to init XADC! \r\n");
         return XST_FAILURE;
@@ -260,8 +334,8 @@ int main()
 
     int x = 0x00;
 
-    while(x != 1)
-    {   
+    while (x != 1)
+    {
         xadcInst.TempRawData = XSysMon_GetAdcData(&sysmonInst, XSM_CH_TEMP);
         xadcInst.VCCINTRawData = XSysMon_GetAdcData(&sysmonInst, XSM_CH_VCCINT);
         xadcInst.VCCAUXRawData = XSysMon_GetAdcData(&sysmonInst, XSM_CH_VCCAUX);
@@ -271,15 +345,15 @@ int main()
         xadcInst.VCCINTData = XSysMon_RawToVoltage(xadcInst.VCCINTRawData);
         xadcInst.VCCAUXData = XSysMon_RawToVoltage(xadcInst.VCCAUXRawData);
         xadcInst.VCCBRAMData = XSysMon_RawToVoltage(xadcInst.VCCBRAMRawData);
-        
-        if(XTmrCtr_IsExpired(&tmrInst, 1))
+
+        if (XTmrCtr_IsExpired(&tmrInst, 1))
         {
             XTmrCtr_Reset(&tmrInst, 1);
             XGpio_DiscreteWrite(&gpioInst[1], 0x01, !(XGpio_DiscreteRead(&gpioInst[1], 0x01)));
             XGpio_DiscreteWrite(&gpioInst[2], 0x01, !(XGpio_DiscreteRead(&gpioInst[2], 0x01)));
         }
 
-        if(XTmrCtr_IsExpired(&tmrInst, 0))
+        if (XTmrCtr_IsExpired(&tmrInst, 0))
         {
             XTmrCtr_Reset(&tmrInst, 0);
             XGpio_DiscreteWrite(&gpioInst[0], 0x01, !(XGpio_DiscreteRead(&gpioInst[0], 0x01)));
@@ -292,18 +366,18 @@ int main()
             x = x + 1;
         }
     }
-    /*
+
     status = streaming();
-    if(status != XST_SUCCESS)
+    if (status != XST_SUCCESS)
     {
         printf("Failed to Capture Frame! \r\n");
         return XST_FAILURE;
     }
-*/
+
     printf("Everything done! \r\n Exiting... \r\n");
 
-    XV_tpg_DisableAutoRestart(&tpgInst);
-    //tpg_reset();
+    // XV_tpg_DisableAutoRestart(&tpgInst);
+    tpg_reset();
 
     close(fd);
 
