@@ -4,9 +4,10 @@
 #define ON 0x00
 #define OFF 0x01
 
-#define READ_SIZE 4096           // Read 4 KB chunks
-#define TOTAL_BYTES 32768        // Total bytes to read
-
+#define FRAME_WIDTH   1920
+#define FRAME_HEIGHT  1080
+#define BYTES_PER_PIXEL 3  // RGB888
+#define FRAME_SIZE (FRAME_WIDTH * FRAME_HEIGHT * BYTES_PER_PIXEL)
 
 typedef struct 
 {
@@ -75,77 +76,82 @@ int tpg()
         return XST_FAILURE;
     }
 
+    XGpio_WriteReg(XPAR_XGPIO_5_BASEADDR, 0x01, 0x01);
+
     printf("TPG Init Success\r\n");
 
-	XV_tpg_Set_height(&tpgInst, 1080);
-	XV_tpg_Set_width(&tpgInst, 1920);
+	XV_tpg_Set_height(&tpgInst, FRAME_HEIGHT);
+	XV_tpg_Set_width(&tpgInst, FRAME_WIDTH);
 	XV_tpg_Set_colorFormat(&tpgInst, XVIDC_CSF_RGB);
 	XV_tpg_Set_maskId(&tpgInst, 0);
-	XV_tpg_Set_motionSpeed(&tpgInst, 5);
-	XV_tpg_Set_bckgndId(&tpgInst, XTPG_BKGND_COLOR_BARS);
-	XV_tpg_Set_boxSize(&tpgInst, 50);
-	XV_tpg_Set_boxColorR(&tpgInst, 0xFF);
-	XV_tpg_Set_boxColorG(&tpgInst, 0xFF);
-	XV_tpg_Set_boxColorB(&tpgInst, 0xFF);
-	XV_tpg_Set_ovrlayId(&tpgInst, 0x01);
+	XV_tpg_Set_motionSpeed(&tpgInst, 0);
+    XV_tpg_Set_motionEn(&tpgInst, 0);
+	XV_tpg_Set_bckgndId(&tpgInst, XTPG_BKGND_SOLID_RED);
 
     printf("Finished Config\r\n");
     
-    XV_tpg_EnableAutoRestart(&tpgInst);
+    XV_tpg_DisableAutoRestart(&tpgInst);
     XV_tpg_Start(&tpgInst);
-
-    printf("Resetting TPG! \r\n");
-    XGpio_WriteReg(XPAR_XGPIO_5_BASEADDR, 0x01, 0x00);
-    sleep(1);
-    XGpio_WriteReg(XPAR_XGPIO_5_BASEADDR, 0x01, 0x01);
-    printf("Done resetting TPG\r\n");
 
     printf("TPG Started\r\n");
 
-    while(1){}
+    //printf("Data: %x \r\n", XV_tpg_ReadReg(XPAR_V_TPG_0_BASEADDR, XV_TPG_CTRL_ADDR_AP_CTRL));
+
+    
+    printf("Resetting TPG! \r\n");
+    XGpio_WriteReg(XPAR_XGPIO_5_BASEADDR, 0x01, 0x00);
+    sleep(2);
+    XGpio_WriteReg(XPAR_XGPIO_5_BASEADDR, 0x01, 0x01);
+    printf("Done resetting TPG\r\n");
+
+    //while(!XV_tpg_IsIdle(&tpgInst));
 
     return XST_SUCCESS;
 }
 
 int streaming()
 {
-    int dev_fd = open("/dev/xdma0_c2h_0", O_RDONLY);
-    if (dev_fd < 0) {
-        perror("Error opening XDMA device");
-        return EXIT_FAILURE;
+    uint8_t* frame_buffer;
+    ssize_t bytes_read;
+    
+    frame_buffer = malloc(FRAME_SIZE);
+    if(!frame_buffer)
+    {
+        printf("Malloc Failed! \r\n");
+        return XST_FAILURE;
     }
 
-    FILE *hex_out = fopen("VideoOut.hex", "w");
-    if (!hex_out) {
-        perror("Error opening output file");
-        close(dev_fd);
-        return EXIT_FAILURE;
+    fd_read = open("/dev/xdma0_c2h_0", O_RDONLY);
+    if(fd_read < 0)
+    {
+        printf("Opening C2H Failed! \r\n");
+        free(frame_buffer);
+        return XST_FAILURE;
     }
 
-    uint8_t buffer[READ_SIZE];
-    ssize_t bytes_read = 0;
-    ssize_t total_read = 0;
-
-    while (total_read < TOTAL_BYTES) {
-        ssize_t to_read = (TOTAL_BYTES - total_read > READ_SIZE) ? READ_SIZE : TOTAL_BYTES - total_read;
-        bytes_read = read(dev_fd, buffer, to_read);
-
-        if (bytes_read < 0) {
-            perror("Error reading from XDMA");
-            break;
-        } else if (bytes_read == 0) {
-            printf("End of stream or no data available.\n");
-            break;
-        }
-
-        write_hex(hex_out, buffer, bytes_read);
-        total_read += bytes_read;
-
-        printf("Read %zd / %d bytes...\n", total_read, TOTAL_BYTES);
+    bytes_read = pread(fd_read, frame_buffer, FRAME_SIZE, 0x00);
+    if(bytes_read < 0)
+    {
+        printf("Reading Failed! \r\n");
+        free(frame_buffer);
+        close(fd_read);
+        return XST_FAILURE;
     }
 
-    close(dev_fd);
-    close(hex_out);
+    FILE *fout = fopen("VideoOut.rgb", "wb");
+    if(!fout)
+    {
+        printf("Cant open file! \r\n");
+        close(fd_read);
+        free(frame_buffer);
+        return XST_FAILURE;
+    }
+
+    fwrite(frame_buffer, 1, bytes_read, fout);
+    fclose(fout);
+
+    close(fd_read);
+    free(frame_buffer);
 
     return XST_SUCCESS;
 }
@@ -175,7 +181,7 @@ int main()
     printf("   FPGA Build/Version: 0x%08X\n\n\r", XGpio_DiscreteRead(&gpioInst[4], 0x01));
 
     tpg();
-    /*
+
     for (size_t i = 0; i < 4; i++)
     {
         status = XGpio_Initialize(&gpioInst[i], testarr[i]);
@@ -236,7 +242,7 @@ int main()
 
     streaming();
 
-    while(x != 0x05)
+    while(x != 10000)
     {   
         xadcInst.TempRawData = XSysMon_GetAdcData(&sysmonInst, XSM_CH_TEMP);
         xadcInst.VCCINTRawData = XSysMon_GetAdcData(&sysmonInst, XSM_CH_VCCINT);
@@ -268,7 +274,6 @@ int main()
             x = x + 1;
         }
     }
-*/
 
     printf("Everything done! \r\n Exiting... \r\n");
 
