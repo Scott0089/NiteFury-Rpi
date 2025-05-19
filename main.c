@@ -82,7 +82,7 @@ int tpg()
 	XV_tpg_Set_colorFormat(&tpgInst, XVIDC_CSF_RGB);
 	XV_tpg_Set_maskId(&tpgInst, 0);
 	XV_tpg_Set_motionSpeed(&tpgInst, 5);
-	XV_tpg_Set_bckgndId(&tpgInst, XTPG_BKGND_SOLID_BLACK);
+	XV_tpg_Set_bckgndId(&tpgInst, XTPG_BKGND_COLOR_BARS);
 	XV_tpg_Set_boxSize(&tpgInst, 50);
 	XV_tpg_Set_boxColorR(&tpgInst, 0xFF);
 	XV_tpg_Set_boxColorG(&tpgInst, 0xFF);
@@ -164,7 +164,6 @@ int main()
         return XST_FAILURE;
     }
 
-
     status = XGpio_Initialize(&gpioInst[4], XPAR_AXI_GPIO_4_BASEADDR);
     if (status != XST_SUCCESS) 
     {
@@ -176,7 +175,7 @@ int main()
     printf("   FPGA Build/Version: 0x%08X\n\n\r", XGpio_DiscreteRead(&gpioInst[4], 0x01));
 
     tpg();
-
+    /*
     for (size_t i = 0; i < 4; i++)
     {
         status = XGpio_Initialize(&gpioInst[i], testarr[i]);
@@ -269,6 +268,7 @@ int main()
             x = x + 1;
         }
     }
+*/
 
     printf("Everything done! \r\n Exiting... \r\n");
 
