@@ -130,7 +130,7 @@ int tpg()
     return XST_SUCCESS;
 }
 
-int streaming(char* filename) {
+int streaming() {
     int fd_read;
     ssize_t bytes_read, total_read;
     size_t padded_width = ((FRAME_WIDTH + 7) / 8) * 8;
@@ -217,7 +217,7 @@ int streaming(char* filename) {
         }
     }
 
-    FILE* fout = fopen(filename, "wb");
+    FILE* fout = fopen("frame.rgb", "a");
     if (!fout) {
         printf("Failed to open output file\n");
         free(input_buffer);
@@ -233,7 +233,7 @@ int streaming(char* filename) {
     free(output_buffer);
     close(fd_read);
 
-    printf("Frame successfully saved to %s\n", filename);
+    printf("Frame successfully saved to frame.rgb\n");
     return XST_SUCCESS;
 }
 
@@ -365,11 +365,9 @@ int main()
         }
     }
 
-    char* arr[5] = {"frame1.rgb","frame2.rgb","frame3.rgb","frame4.rgb","frame5.rgb"};
-
-    for (size_t i = 0; i < 5; i++)
+    for (size_t i = 0; i < 60; i++)
     {
-        status = streaming(arr[i]);
+        status = streaming();
         if (status != XST_SUCCESS)
         {
             printf("Failed to Capture Frame! \r\n");
