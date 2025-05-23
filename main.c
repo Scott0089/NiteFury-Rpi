@@ -364,7 +364,7 @@ int main()
         }
     }
 
-    printf("Doing DMA stuff. \r\n ")
+    printf("Doing DMA stuff. \r\n ");
 
     for (size_t i = 0; i < 600000000000000; i++)
     {
