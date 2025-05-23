@@ -8,7 +8,6 @@
 
 #undef __LINUX__
 
-//#include "tpg.h"
 #include "sc_io.h"
 
 #include "xgpio.h"
@@ -18,15 +17,9 @@
 #include "xv_tpg.h"
 #include "xvidc.h"
 
-#include "dma_utils.h"
-
 #include <termios.h>
 
 #define TARGET_PHYS_ADDR 0x40000000 
-
-//#define SDT
-
-
 
 extern int fd;
 
