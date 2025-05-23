@@ -70,15 +70,6 @@ int kbhit() {
     return 0;
   }
 
-void write_hex(FILE *out, uint8_t *buffer, ssize_t len)
-{
-    for (ssize_t i = 0; i < len; i++)
-    {
-        fprintf(out, "%02x", buffer[i]);
-    }
-    fprintf(out, "\n");
-}
-
 int SysMonFractionToInt(float FloatNum)
 {
     float Temp;
