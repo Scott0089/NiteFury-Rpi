@@ -20,6 +20,8 @@
 
 #include "dma_utils.h"
 
+#include <termios.h>
+
 #define TARGET_PHYS_ADDR 0x40000000 
 
 //#define SDT

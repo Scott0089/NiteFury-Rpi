@@ -45,6 +45,31 @@ int fd = -1;
 int fd_read = -1;
 int hex_fd = -1;
 
+int kbhit() {
+    struct termios oldterm, newterm;
+    int ch;
+    int oldf;
+  
+    tcgetattr(STDIN_FILENO, &oldterm);
+    newterm = oldterm;
+    newterm.c_lflag &= ~(ICANON | ECHO);
+    tcsetattr(STDIN_FILENO, TCSANOW, &newterm);
+    oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
+    fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK);
+  
+    ch = getchar();
+  
+    tcsetattr(STDIN_FILENO, TCSANOW, &oldterm);
+    fcntl(STDIN_FILENO, F_SETFL, oldf);
+  
+    if (ch != EOF) {
+      ungetc(ch, stdin);
+      return 1;
+    }
+  
+    return 0;
+  }
+
 void write_hex(FILE *out, uint8_t *buffer, ssize_t len)
 {
     for (ssize_t i = 0; i < len; i++)
@@ -364,7 +389,28 @@ int main()
         }
     }
 
-    printf("Doing DMA stuff. \r\n ");
+    printf("\n\nDoing DMA stuff. \r\n\n ");
+
+    while(!kbhit())
+    {
+        status = streaming();
+        if (status != XST_SUCCESS)
+        {
+            printf("Failed to Capture Frame! \r\n");
+            return XST_FAILURE;
+        }
+
+        xadcInst.TempRawData = XSysMon_GetAdcData(&sysmonInst, XSM_CH_TEMP);
+        xadcInst.TempData = XSysMon_RawToTemperature(xadcInst.TempRawData);
+        if (XTmrCtr_IsExpired(&tmrInst, 0))
+        {
+            XTmrCtr_Reset(&tmrInst, 0);
+
+            printf("Temperature: %0d.%03d C \r", (int)xadcInst.TempData, SysMonFractionToInt(xadcInst.TempData));
+        }
+    }
+
+    /*
 
     for (size_t i = 0; i < 600000000000000; i++)
     {
@@ -376,10 +422,15 @@ int main()
         }
     }
 
-    printf("Everything done! \r\n Exiting... \r\n");
+    */
+
+    printf("\nEverything done! \r\n Exiting... \r\n");
+
 
     XV_tpg_DisableAutoRestart(&tpgInst);
     tpg_reset();
+
+    remove("frame.rgb");
 
     close(fd);
 
