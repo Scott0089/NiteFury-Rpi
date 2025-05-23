@@ -233,7 +233,7 @@ int streaming() {
     free(output_buffer);
     close(fd_read);
 
-    printf("Frame successfully saved to frame.rgb\n");
+    //printf("Frame successfully saved to frame.rgb\n");
     return XST_SUCCESS;
 }
 
@@ -364,7 +364,9 @@ int main()
         }
     }
 
-    for (size_t i = 0; i < 60; i++)
+    printf("Doing DMA stuff. \r\n ")
+
+    for (size_t i = 0; i < 600000000000000; i++)
     {
         status = streaming();
         if (status != XST_SUCCESS)
