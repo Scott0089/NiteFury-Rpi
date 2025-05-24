@@ -197,7 +197,8 @@ int streaming() {
         return XST_FAILURE;
     }
 
-    //I used chatgpt for this. Dont kill me
+    // I used chatgpt for this. Dont kill me
+    // Need to do this is hardware instead. Too CPU intensive
     // Unpack pixels
     // Treat input_buffer as array of 64-bit words (2 pixels each)
     uint64_t* pixels_64 = (uint64_t*)input_buffer;
@@ -249,7 +250,6 @@ int streaming() {
     free(output_buffer);
     close(fd_read);
 
-    //printf("Frame successfully saved to frame.rgb\n");
     return XST_SUCCESS;
 }
 
@@ -401,22 +401,7 @@ int main()
         }
     }
 
-    /*
-
-    for (size_t i = 0; i < 600000000000000; i++)
-    {
-        status = streaming();
-        if (status != XST_SUCCESS)
-        {
-            printf("Failed to Capture Frame! \r\n");
-            return XST_FAILURE;
-        }
-    }
-
-    */
-
     printf("\nEverything done! \r\n Exiting... \r\n");
-
 
     XV_tpg_DisableAutoRestart(&tpgInst);
     tpg_reset();
