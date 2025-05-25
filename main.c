@@ -9,6 +9,8 @@
 #define BYTES_PER_PIXEL 3 // RGB888
 #define FRAME_SIZE (FRAME_WIDTH * FRAME_HEIGHT * BYTES_PER_PIXEL)
 
+#define SHM_NAME "/video_stream_shm"
+
 typedef struct
 {
     uint32_t TempRawData;
@@ -146,8 +148,129 @@ int tpg()
     return XST_SUCCESS;
 }
 
+int streaming2() { //This is all ChatGPT. Need to reverse engineer this whole shared memory thing to figure out why it works.
+    ssize_t bytes_read, total_read;
+    size_t padded_width = ((FRAME_WIDTH + 7) / 8) * 8;
+    size_t stride_2pixels = padded_width / 2;
+    size_t stride_bytes = stride_2pixels * 8;
+    size_t frame_bytes = stride_bytes * FRAME_HEIGHT;
+
+    uint8_t* input_buffer = malloc(frame_bytes);
+    if (!input_buffer) {
+        printf("Malloc failed for input_buffer\n");
+        return XST_FAILURE;
+    }
+
+    // Create shared memory
+    int shm_fd = shm_open(SHM_NAME, O_CREAT | O_RDWR, 0666);
+    if (shm_fd < 0) {
+        perror("shm_open");
+        free(input_buffer);
+        return XST_FAILURE;
+    }
+
+    // Size of shared memory: 4 bytes (control) + RGB frame
+    size_t shm_size = sizeof(uint32_t) + FRAME_SIZE;
+    if (ftruncate(shm_fd, shm_size) == -1) {
+        perror("ftruncate");
+        close(shm_fd);
+        free(input_buffer);
+        return XST_FAILURE;
+    }
+
+    uint8_t* shm_ptr = mmap(NULL, shm_size, PROT_WRITE, MAP_SHARED, shm_fd, 0);
+    if (shm_ptr == MAP_FAILED) {
+        perror("mmap");
+        close(shm_fd);
+        free(input_buffer);
+        return XST_FAILURE;
+    }
+
+    uint32_t* frame_counter = (uint32_t*)shm_ptr;
+    uint8_t* output_buffer = shm_ptr + sizeof(uint32_t);
+
+    int fd_read = open("/dev/xdma0_c2h_0", O_RDONLY);
+    if (fd_read < 0) {
+        printf("Failed to open DMA device\n");
+        munmap(shm_ptr, shm_size);
+        close(shm_fd);
+        free(input_buffer);
+        return XST_FAILURE;
+    }
+
+    while(!kbhit())
+    {
+        total_read = 0;
+            while (total_read < frame_bytes) {
+                bytes_read = pread(fd_read, input_buffer + total_read, frame_bytes - total_read, total_read);
+                if (bytes_read < 0) {
+                    printf("Failed to read from DMA\n");
+                    munmap(shm_ptr, shm_size);
+                    close(shm_fd);
+                    free(input_buffer);
+                    close(fd_read);
+                    return XST_FAILURE;
+                }
+                if (bytes_read == 0) break;
+                total_read += bytes_read;
+            }
+
+            if (total_read != frame_bytes) {
+                printf("Incomplete frame read: expected %zu, got %zd\n", frame_bytes, total_read);
+                munmap(shm_ptr, shm_size);
+                close(shm_fd);
+                free(input_buffer);
+                close(fd_read);
+                return XST_FAILURE;
+            }
+
+            uint64_t* pixels_64 = (uint64_t*)input_buffer;
+
+            for (size_t row = 0; row < FRAME_HEIGHT; row++) {
+                size_t out_col = 0;
+                for (size_t col = 0; col < stride_2pixels; col++) {
+                    uint64_t word = pixels_64[row * stride_2pixels + col];
+
+                    uint32_t pix1 = (uint32_t)(word & 0x3FFFFFFF);
+                    uint16_t g10_1 = pix1 & 0x3FF;
+                    uint16_t b10_1 = (pix1 >> 10) & 0x3FF;
+                    uint16_t r10_1 = (pix1 >> 20) & 0x3FF;
+
+                    if (out_col < FRAME_WIDTH) {
+                        output_buffer[(row * FRAME_WIDTH + out_col) * 3 + 0] = convert_10bit_to_8bit(g10_1);
+                        output_buffer[(row * FRAME_WIDTH + out_col) * 3 + 1] = convert_10bit_to_8bit(b10_1);
+                        output_buffer[(row * FRAME_WIDTH + out_col) * 3 + 2] = convert_10bit_to_8bit(r10_1);
+                    }
+                    out_col++;
+
+                    uint32_t pix2 = (uint32_t)((word >> 30) & 0x3FFFFFFF);
+                    uint16_t g10_2 = pix2 & 0x3FF;
+                    uint16_t b10_2 = (pix2 >> 10) & 0x3FF;
+                    uint16_t r10_2 = (pix2 >> 20) & 0x3FF;
+
+                    if (out_col < FRAME_WIDTH) {
+                        output_buffer[(row * FRAME_WIDTH + out_col) * 3 + 0] = convert_10bit_to_8bit(g10_2);
+                        output_buffer[(row * FRAME_WIDTH + out_col) * 3 + 1] = convert_10bit_to_8bit(b10_2);
+                        output_buffer[(row * FRAME_WIDTH + out_col) * 3 + 2] = convert_10bit_to_8bit(r10_2);
+                    }
+                    out_col++;
+                }
+            }
+
+            (*frame_counter)++;  // Signal new frame is ready
+    }
+
+    // Cleanup
+    munmap(shm_ptr, shm_size);
+    close(shm_fd);
+    close(fd_read);
+    free(input_buffer);
+
+    return XST_SUCCESS;
+}
+
 int streaming() {
-    int fd_read;
+    //int fd_read;
     ssize_t bytes_read, total_read;
     size_t padded_width = ((FRAME_WIDTH + 7) / 8) * 8;
     size_t stride_2pixels = padded_width / 2; // number of 64-bit words per line
@@ -233,6 +356,7 @@ int streaming() {
             out_col++;
         }
     }
+    
 
     FILE* fout = fopen("frame.rgb", "a");
     if (!fout) {
@@ -382,9 +506,25 @@ int main()
 
     printf("\n\nDoing DMA stuff. \r\n\n ");
 
+    status = streaming2();
+        if (status != XST_SUCCESS)
+        {
+            printf("Failed to Capture Frame! \r\n");
+            return XST_FAILURE;
+        }
+
+    /*
+
     while(!kbhit())
     {
+
         status = streaming();
+        if (status != XST_SUCCESS)
+        {
+            printf("Failed to Capture Frame! \r\n");
+            return XST_FAILURE;
+        }
+        status = streaming2();
         if (status != XST_SUCCESS)
         {
             printf("Failed to Capture Frame! \r\n");
@@ -400,6 +540,8 @@ int main()
             printf("Temperature: %0d.%03d C \r", (int)xadcInst.TempData, SysMonFractionToInt(xadcInst.TempData));
         }
     }
+
+    */
 
     printf("\nEverything done! \r\n Exiting... \r\n");
 
